@@ -1,0 +1,405 @@
+
+---
+title: "Notebook for R Function: create_output_table"
+author: Minchan (Daisy) Shi
+date: September 1, 2024
+output:
+  html_notebook:
+    toc: yes
+  word_document:
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
+  pdf_document:
+    toc: yes  
+---
+
+# Overview
+
+This algorithm uses medical codes (for example, diagnoses or procedure codes) to identify hospital encounters involving the non-therapeutic use of stimulants and opioids. Non-therapeutic use includes the use of illicit substances (stimulants or opioids), misuse of prescriptions, or the unspecified non-therapeutic use of substances. The algorithm is designed to analyze data in table form and produce an output file containing variables related to non-therapeutic stimulant use, non-therapeutic opioid use, and the co-occurrence (a proxy for co-use) of these two types of use.  
+
+
+
+The `create_output_table` function generates an output table based on mappings defined in a specified Excel file. It is designed to handle various types of input data (CSV, Excel, SAS, database, or preloaded data), applying mapping rules to categorize and filter data based on specified columns and code systems.This Notebook provides detailed explanations of each parameter, examples of usage scenarios, and notes to help users effectively utilize `create_output_table function` in your R projects. Adjust the examples and details as necessary to match specific use cases or additional functionalities of your function.
+
+# Installation
+
+Before using the function, ensure you have installed the required R packages. The following code will install the necessary packages if they are not already installed. If you haven't installed these packages yet, run the lines below to install them:
+
+# Setting the Working Directory to the Source File Location in RStudio
+
+Access the Session Menu: Go to the top menu in RStudio and click on `Session`.
+
+Set the Working Directory: In the dropdown menu, navigate to `Set Working Directory`.Click on `To Source File Location`.
+
+Once you set the Working Directory, all output files will be saved there. If you skip this step, you'll need to specify the file location each time you run the function. However, if your input files are in the Working Directory, you only need to provide the file name—though you can still use the full path if you prefer. This setup makes it easier to manage your files.
+
+```{r,error=FALSE,warning=FALSE}
+# Uncomment and run the following lines to install the necessary packages if you haven't already.
+# install.packages("readxl")
+# install.packages("dplyr")
+# install.packages("haven")
+
+library(dplyr)
+library(readxl)
+library(haven)
+
+
+```
+
+
+# R Function: create_output_table
+
+## Function Parameters
+
+### code_mapping_file
+- **Description:** Path to the Excel file `Code_Mapping_GitHub.xlsx` containing code mappings. Along with the function, we will provide the code mapping file `Code_Mapping_GitHub.xlsx` in order to run the `create_output_table` function. It must specify the location of the file. if you already set the Working Directory in the previous section, then you only need to provide the input file name, and not the full path.
+- **Example:** `"path/to/Code_Mapping_GitHub.xlsx"`  
+
+### data_type
+- **Description:** Type of input data. Supported types include "txt", "csv", "xls", "xlsx", "sas", "database", or "preloaded_data".
+- **Examples:** `"txt"`, `"csv"`, `"xls"`, `"xlsx"`, `"sas"`, `"database"`, or `"preloaded_data"` 
+
+### input_file
+- **Description:** Path to the input file (depends on data_type). For "database" or "preloaded_data", provide "NULL"(not specifying any code system).
+- **Examples:** `"path/to/input_file.csv"`, `NULL`
+
+### conn_str
+- **Description:** Connection string for accessing a database (required if data_type is "database"),provide "NULL" if data_type is not "database".
+- **Example:** `"Driver={ODBC Driver 17 for SQL Server};Server=your_server;Database=your_database;Trusted_Connection=yes;"`
+
+### query
+- **Description:** SQL query to retrieve data from a database (required if data_type is "database"),provide "NULL" if data_type is not "database".
+- **Example:** `"SELECT * FROM your_table"`
+
+### code_system_name
+- **Description:** Name of the code system to filter mappings. Users can choose from "ICD-10-CM", " ", "HCPCS", "RXNORM", "SNOMED", "LOINC", or NULL (not specifying any code system).
+- **Examples:** ` c("ICD-10-CM", "HCPCS")`  or NULL
+
+### columns_to_keep
+- **Description:** Columns to include in the output table.
+- **Examples:** `c("ID", "VisitType")`
+
+### code_variable
+- **Description:** Name of the column containing codes to match against mappings.(only allow one variable)
+- **Examples:** `"ICD_Code"`, `"RXNORM_Code"`
+
+### subset_string (optional)
+- **Description:** Condition to subset rows of the input data.
+- **Examples:** `CodeType == "ICD-10-CM"`
+- **The subset_string parameter** is used to filter rows of the input data based on the specified condition.
+- **subset_string = 'VisitType != "NA"' ** filters the data to include only rows where the VisitType column does not equal "NA".
+- **The single quotes** around the condition are necessary to ensure it is correctly parsed as a string.
+
+### results_file  
+- **Description:**:  Path to the output file. The output is only available in CSV format, so the file must have a `.csv` extension. 
+- **Examples:** `"results_file.csv"`
+
+### Notes
+- The R function `create_output_table` is provided below and includes the necessary algorithm. This code is fixed and should not be modified. You can run it as is in this section.
+- Ensure that your input data and code mapping file are correctly formatted as per the function's requirements.
+-	Customize columns_to_keep and subset_string parameters based on your specific data and analysis needs.
+-	For "database" data type, provide a valid connection string (conn_str) and SQL query (query) to fetch data from your database.
+
+```{r}
+
+# To create the R function `create_output_table` and include the algorithm without changing any of its code, you can encapsulate the existing code in a function.  This code is fixed and should not be modified. You can run it as is in this section. Here's how you might structure it:
+
+create_output_table <- function(code_mapping_file,data_type,input_file,conn_str,query,code_system_name,columns_to_keep,code_variable,subset_string,results_file) {
+
+  # Load mapping file (assuming mapping_file is always an Excel file)
+  map <- readxl::read_excel(code_mapping_file, sheet = "Code_Mapping")
+  
+  # Convert CODE_SYSTEM_NAME to upper case if not NULL
+  if (!is.null(code_system_name)) {
+    code_system_name <- toupper(code_system_name)
+    # Filter map if CODE_SYSTEM_NAME is provided
+    map <- map %>% filter(CODE_SYSTEM %in% code_system_name)
+  }
+  
+  # List of variables to iterate over (unchanged)
+  variables <- c("DRUGSCREEN_CODE", "STIM_ANY_CODE", "STIM_ANY_NON_TX_CODE", "STIM_NON_TX_UNSP_CODE", 
+                 "STIM_TX_CODE", "TX_METHYLPHENIDATE_CODE", "TX_DEXTROAMPHETAMINE_CODE", "TX_AMPHETAMINE_CODE",
+                 "TX_DEXMETHYLPHENIDATE_CODE", "TX_LISDEXAMFETAMINE_CODE", "TX_AMPHET_DEXTROAMPHET_CODE", 
+                 "STIM_MISUSE_CODE", "MISUSE_METHYLPHENIDATE_CODE", "MISUSE_AMPHETAMINE_CODE", 
+                 "STIM_ILLICIT_CODE", "ILLICIT_COCAINE_CODE", "ILLICIT_METHAMPHETAMINE_CODE", 
+                 "ILLICIT_MDMA_CODE", "OPIOID_ANY_CODE", "OPIOID_ANY_NON_TX_CODE", "OPIOID_MISUSE_CODE", 
+                 "OPIOID_ILLICIT_CODE", "OPIOID_NON_TX_UNSP_CODE")
+  
+  # Sort variables alphabetically
+  variables <- sort(variables)
+  
+  # Function to concatenate codes for a given variable (unchanged)
+  concatenate_codes <- function(data, variable) {
+    codes <- data %>%
+      dplyr::filter({{ variable }} == 1) %>%
+      dplyr::pull(CODE)
+    return(codes)
+  }
+  
+  # Iterate over each variable and concatenate codes (unchanged)
+  codes_list <- purrr::map(variables, ~ concatenate_codes(map, !!sym(.x)))
+  # Create a named list with variable names as names
+  codes_list <- setNames(codes_list, variables)
+  
+  # Convert data_type to lowercase for case-insensitive comparison
+  data_type <- tolower(data_type)
+  
+  # Read data based on the specified data_type
+  if (data_type %in% c("txt")) {
+   data <- read.table(input_file, header = TRUE, stringsAsFactors = FALSE)
+  } else if (data_type %in% c("csv")) {
+    # Read CSV file
+    data <- readr::read_csv(input_file, show_col_types = FALSE)
+  } else if (data_type %in% c("xls", "xlsx")) {
+    # Read Excel file
+    data <- readxl::read_excel(input_file)
+  } else if (data_type %in% c("preloaded_data")) {
+    # Use existing data already in R 
+    data <- input_file
+  } else if (data_type %in% c("sas")) {
+    # Read SAS dataset
+    data <- haven::read_sas(input_file)
+  } else if (data_type %in% c("database")) {
+    # Read data from a database
+    if (is.null(conn_str) || is.null(query)) {
+      stop("For 'db' data_type, 'conn_str' and 'query' must be provided.")
+    }
+    library(RODBC)
+    db <- odbcDriverConnect(conn_str)
+    data <- sqlQuery(db, query)
+    close(db)
+  } else {
+    # Handle unsupported data_type
+    stop("Unsupported data_type. Only 'txt', 'csv', 'xls', 'xlsx', 'sas', 'database', or 'preloaded_data' are supported.")
+  }
+
+  print("Data successfully loaded and processed!")
+  
+  # Get the dimensions of the data frame
+  dimensions <- dim(data)
+  
+  # Extract the number of rows and columns
+  num_rows <- dimensions[1]
+  num_cols <- dimensions[2]
+  
+  # Print a message with the number of rows and columns
+  cat("Read data", num_rows, "rows,", num_cols, "columns\n")
+
+  columns_to_keep<- toupper(columns_to_keep)
+  code_variable<- toupper(code_variable)
+  
+  if (!is.null(subset_string) && subset_string != "") {
+    # Filter the data frame based on the subset_string 
+    data <- data %>%
+      filter(eval(parse(text = subset_string))) %>% 
+      rename_all(toupper) # Convert all variable names to toupper
+  }
+ 
+ data1 <- data %>% 
+    setNames(toupper(names(.))) %>% 
+    mutate(across(all_of(columns_to_keep), as.character)) %>% 
+    dplyr::select(all_of(columns_to_keep), all_of(code_variable)) %>%
+    mutate(CODE = gsub("\\.", "", .data[[code_variable]]))
+  
+  # Initialize output dataframe with selected columns (based on columns_to_keep)
+  # output <- data[, columns_to_keep]
+output <- data1 %>% 
+  dplyr::select(all_of(columns_to_keep)) 
+   
+  
+  # Iterate over each column in the lookup table (unchanged)
+  for (col in names(codes_list)) {
+    # Create a column with zeros for the current category
+    output[, col] <- 0
+    
+    # Find the matching codes and update the corresponding column
+    matching_codes <- unlist(codes_list[[col]])
+    output[data1$CODE %in% matching_codes, col] <- 1
+  }
+  
+  # Additional conditions based on specific columns (unchanged)
+  if(all(c("condition_codesys_name", "condition_codesys_name_r", "condition_code") %in% names(data1))) {
+    output <- output %>%
+      dplyr::mutate(
+        ILLICIT_METHAMPHETAMINE_CODE = case_when(
+          condition_codesys_name == 'SNOMED-CT' &
+            condition_codesys_name_r == 'ICD-10-CM' &
+            condition_code == '699449003' ~ 1,
+          TRUE ~ ILLICIT_METHAMPHETAMINE_CODE
+        ),
+        STIM_UNSP_NONTX_CODE = case_when(
+          condition_codesys_name == 'SNOMED-CT' &
+            condition_codesys_name_r == 'ICD-10-CM' &
+            condition_code == '699449003' ~ 0,
+          TRUE ~ STIM_UNSP_NONTX_CODE
+        )
+      )
+  }
+  
+  # Apply additional logic to create derived columns (unchanged)
+  output$STIM_ANY_NON_TX_CODE <- ifelse(output$STIM_NON_TX_UNSP_CODE == 1 |
+                                          output$STIM_MISUSE_CODE == 1 |
+                                          output$STIM_ILLICIT_CODE == 1, 1, 0)
+  
+  output$OPIOID_ANY_NON_TX_CODE <- ifelse(output$OPIOID_NON_TX_UNSP_CODE == 1 |
+                                            output$OPIOID_MISUSE_CODE == 1 |
+                                            output$OPIOID_ILLICIT_CODE == 1, 1, 0)
+  
+  # Filter rows based on condition (remove rows where all numeric columns are zero)
+  output_final <- output %>%
+    filter(rowSums(across(where(is.numeric))) != 0) %>% 
+    unique()
+  
+  
+  # Get the dimensions of the data frame
+  dimensions1 <- dim(output_final)
+  # Extract the number of rows and columns
+  num_rows1 <- dimensions1[1]
+  num_cols1 <- dimensions1[2]
+  
+  # Print a message with the number of rows and columns
+  cat("Output data (filtered to exclude rows where all numeric columns are zero): ", num_rows1, "rows,", num_cols1, "columns\n")
+  
+    # Write to CSV file
+  write.csv(output_final, file = results_file, row.names = FALSE)
+  
+  return(output_final)
+  
+}
+
+ 
+```
+
+### Create fake data , Once the data frame is created in R, it should be treated as "preloaded_data" for the data_type parameter.
+
+```{r}
+# Create the fake data
+fake_data <- data.frame(
+  ID = c("123X", "456X", "789Y", "012Y", "254P", "835T", "624X", "826P", "426P", "264X", "926P", "012Y", "913Z","837w"),
+  VisitType = c("ED", "ED-to-IP", "IP", "IP", "ED-to-IP", "ED", "IP", "NA", "OP", "IP", "ED", "IP", "OP","ED"),
+  Code = c("C9046", "T40694", "F33.9", "F11.11", "F12222", "F15220", "F18120", "G9578", "Z915", "F419", "F419", "F1123", "372862","151612"),
+  CodeType = c("HCPCS", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "HCPCS", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "ICD-10-CM", "RXNORM","RXNORM")
+)
+
+print(fake_data)
+ 
+ 
+
+```
+# Complete Example Function Call
+
+### Example 1: Using preloaded_data 
+
+Explanation of the Example:
+
+- **code_mapping_file**: The path to the Excel file `Code_Mapping_GitHub.xlsx`. 
+- **data_type**: The type of input data. In this example, it is "preloaded_data".
+- **input_file**: The preloaded data frame.
+- **conn_str**: Not needed since we are using preloaded data.
+- **query**: Not needed since we are using preloaded data.
+- **code_system_name**: Filtering the mappings for the "ICD-10-CM" code system.
+- **columns_to_keep**: Including the "ID" and "VisitType" columns in the output table.
+- **code_variable**: The name of the column containing the codes to match against mappings, in this case, "Code".
+- **subset_string**: Filtering the data to include only rows where the VisitType column does not equal "NA".Optional; use NULL if you do not want to apply any subset filter.
+- **results_file**: Path to the output file. Output is csv format. 
+
+By following these instructions, you can effectively use the create_output_table function to process your data according to the specified parameters and conditions.
+
+
+```{r,warning=FALSE}
+
+
+
+example1_results_file <- create_output_table(
+  code_mapping_file = "data//Code_Mapping_GitHub.xlsx",  # Provide the path to the Code_Mapping_GitHub.xlsx file. If you have already set the working directory to the source file location in RStudio, you can leave this as is.
+  data_type = "preloaded_data" , # data_type 
+  input_file = fake_data ,
+  conn_str = NULL ,
+  query= NULL ,
+  code_system_name =  c("HCPCS","ICD-10-CM") , # you can choose from "ICD-10-CM", "HCPCS" , "RXNORM", "SNOMED" , "LOINC" or  NULL (not specify any code system)
+  columns_to_keep = c("ID","VisitType") ,  # variables to keep in the output file
+  code_variable = c("Code") , # variable of the column to search
+  subset_string =  ' VisitType != "NA"  ' , # Optional; use NULL if you do not want to apply any subset filter
+  results_file = "example1_results_file.csv"
+)
+
+
+```
+
+### Example 2: Using a CSV File
+
+- **code_mapping_file**: The path to the Excel file `Code_Mapping_GitHub.xlsx`. 
+- **data_type**: is set to "csv", indicating that the input data is in a CSV file.
+- **input_file**:  is set to the path of the CSV file containing the input data.
+- **conn_str**: Not needed since we are not using a database connection.
+- **query**: Not needed since we are not using a database connection.
+- **code_system_name**: is set to NULL, meaning it won't filter the mappings based on a specific code system.
+- **columns_to_keep**: Including the "ID" and "VisitType" columns in the output table.
+- **code_variable**: The name of the column containing the codes to match against mappings, in this case, "Code".
+- **subset_string**: Filtering the data to include only rows where the VisitType column does not equal "NA". Optional; use NULL if you do not want to apply any subset filter.
+- **results_file**: Path to the output file. Output is csv format. 
+
+
+```{r,warning=FALSE}
+
+example2_results_file <- create_output_table(
+  code_mapping_file = "data//Code_Mapping_GitHub.xlsx", # Provide the path to the Code_Mapping_GitHub.xlsx file. If you have already set the working directory to the source file location in RStudio, you can leave this as is.
+  data_type = "csv", # data_type 
+  input_file = "data\\fake_data.csv", #change the path file;
+  conn_str = NULL,
+  query= NULL,
+  code_system_name = NULL, # you can choose from "ICD-10-CM", " " ,"HCPCS" , "RXNORM", "SNOMED" , "LOINC" or  NULL (not specify any code system)
+  columns_to_keep = c("ID","VisitType"),  # variables to keep in the output file
+  code_variable = "Code", # variable of the column to search
+  subset_string =  ' VisitType != "NA" ', # optinal , or use NULL if you dont want to subset 
+  results_file = "example2_results_file.csv"
+)
+
+
+
+```
+
+
+### Example3: Using SAS file
+
+```{r,warning=FALSE}
+
+example3_results_file <- create_output_table(
+  code_mapping_file = "data//Code_Mapping_GitHub.xlsx",  # Provide the path to the Code_Mapping_GitHub.xlsx file. If you have already set the working directory to the source file location in RStudio, you can leave this as is.
+  data_type = "SAS", # data_type 
+  input_file = "data\\fake_data.sas7bdat",
+  conn_str = NULL,
+  query =  NULL ,
+  code_system_name = NULL, # you can choose from "ICD-10-CM", " " ,"HCPCS" , "RXNORM", "SNOMED" , "LOINC" or  NULL (not specify any code system)
+  columns_to_keep = c("ID","VisitType"),  # variables to keep in the output file
+  code_variable = "Code", # variable of the column to search
+  subset_string =  ' VisitType != "NA" ', # optional , or use NULL if you dont want to subset 
+  results_file = "example3_results_file.csv"
+)
+
+
+```
+
+### Example 4: Using a Database
+
+```{r,warning=FALSE}
+
+# example4_results_file <- create_output_table(
+#   code_mapping_file = "data//Code_Mapping_GitHub.xlsx",  # Provide the path to the Code_Mapping_GitHub.xlsx file. If you have already set the working directory to the source file location in RStudio, you can leave this as is.
+#   data_type = "database", # data_type 
+#   input_file = NULL,
+#   conn_str = "Driver={ODBC Driver 17 for SQL Server};Server=your_server;Database=your_database;Trusted_Connection=yes;",
+#   query = "SELECT [ID],[RxNorm] FROM [database]" ,
+#   code_system_name = "RXNORM", # you can choose from "ICD-10-CM", " " ,"HCPCS" , "RXNORM", "SNOMED" , "LOINC" or  NULL (not specify any code system)
+#   columns_to_keep = c("ID"),  # variables to keep in the output file
+#   code_variable = "RXNORM", # variable of the column to search
+#   subset_string =  ' ID %in% c("05145ccy")' , # optional , or use NULL if you don't want to subset 
+#   results_file = "example4_results_file.csv"
+# )
+
+```
+
+This notebook serves as a comprehensive guide for using the create_output_table function to process and transform data according to the provided mapping rules. By following the parameter explanations and examples, you can adapt the function to various data sources and requirements, ensuring that your data is accurately categorized and filtered. Whether you are working with preloaded data, CSV files, or data from a database, the create_output_table function offers flexibility to meet your specific needs. For further customization or troubleshooting, refer to the function's parameters section and adjust the parameters as needed. Happy data processing!
+ 
