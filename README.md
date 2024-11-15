@@ -20,7 +20,7 @@ The natural language processing component for this algorithm designed to analyze
 
 <ins>Related repositories:</ins>
 
-The stimulant algorithm is the third iteration of two previously developed substance-use-related algorithms. For your reference, these algorithms can be found in the following repositories.
+The stimulant algorithm is the third in a series of related substance-use-related algorithms. For your reference, these algorithms can be found in the following repositories.
 
   * [ ] Algorithm to detect opioid use, selected mental health issues, and substance use disorders in medical codes: 
     * https://github.com/CDCgov/Opioid_SUD_MHI_MedCodes
@@ -40,12 +40,16 @@ Mappings are provided for categories such as use of stimulant opioid use, and a 
 The `create_output_table` function generates an output table based on mappings defined in a specified Excel file. It is designed to handle various types of input data (CSV, Excel, SAS, database, or preloaded data), applying mapping rules to categorize and filter data based on specified columns and code systems. The included Notebook provides detailed explanations of each parameter, examples of usage scenarios, and notes to help users effectively utilize the `create_output_table function` in their R projects. Adjust the examples and details as necessary to match specific use cases or additional functionalities of your function.
 
 
-## Installation
+## Installation and Set-up
+
+When opening the R script before running, ensure your working directory is set to the file location. This can be done by going to the ‘Session’ menu in RStudio, then selecting ‘Set Working Directory’, and then choosing ‘To Source File Location.’
 
 Before using the function, ensure you have installed the required R packages:
   * install.packages("readxl")
   * install.packages("dplyr")
   * install.packages("haven")
+    
+This repository also includes an example notebook as an HTML document.
 
 ## Function Parameters
 
