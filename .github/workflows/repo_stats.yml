@@ -1,1 +1,19 @@
- 
+name: Github Repo Statistics
+
+on:
+  schedule:
+    # Run once per day at 23:00 UTC
+    - cron: "0 23 * * *"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  repostats:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - name: run github repository stats
+        uses: jgehrcke/github-repo-stats@v1.4.2
+        with:
+          ghtoken: ${{ secrets.TRAFFIC_TRACKER }}
+          ghpagesprefix: https://cdcgov.github.io/stimulant_opioid_algorithm_medical_codes_R
