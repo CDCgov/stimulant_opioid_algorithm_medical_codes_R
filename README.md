@@ -4,9 +4,18 @@
 
 **sse6@cdc.gov**
 
-**Edited: November 14, 2024**
+**Edited: December 17, 2025**
 
 ## Overview
+
+<ins> Errata <ins>
+
+As of December 17, 2025, the following ICD-10-CM codes in the Code_Mapping_Github.xlsx have been updated:
+
+   * Value for R781 in variable OPIOID_NON_TX_UNSP_CODE updated from 0 to 1
+   * Value for T405 in variable STIM_ANY_NON_TX_CODE updated from 0 to 1 
+   * Value for T405X in variable STIM_ANY_NON_TX_CODE updated from 0 to 1
+   * Value for T4365 in variable STIM_ANY_NON_TX_CODE updated from 0 to 1
 
 <ins> Background </ins>
 
