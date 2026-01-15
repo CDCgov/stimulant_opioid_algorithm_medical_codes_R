@@ -1,4 +1,4 @@
-# Guide to the Medical Code Component <p> of the NCHS Stimulant and Opioid Use Algorithm
+# Guide to the Medical Code Component <p> of the NCHS Stimulant Algorithm
 
 **Author: Minchan (Daisy) Shi**
 
